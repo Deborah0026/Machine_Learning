@@ -1,0 +1,65 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_20newsgroups
+from sklearn.feature_extraction.text import CountVectorizer
+
+
+
+print("Loading 20 Newsgroups dataset...")
+
+categories = ['alt.atheism', 'sci.space']
+newsgroups = fetch_20newsgroups(subset='train', categories=categories, remove=('headers', 'footers', 'quotes'))
+
+
+
+vectorizer = CountVectorizer(max_features=1000, stop_words='english')
+X = vectorizer.fit_transform(newsgroups.data)
+
+
+word_counts = np.asarray(X.sum(axis=0)).flatten()
+vocab = vectorizer.get_feature_names_out()
+V = len(vocab)
+N = word_counts.sum()
+
+print(f"Total Documents: {X.shape[0]}")
+print(f"Vocabulary Size (V): {V}")
+print(f"Total Word Tokens (N): {N}\n")
+
+theta_mle = word_counts / N
+
+
+alpha_values = [1.0001, 1.5, 2.0, 10.0]  # alpha = 1 + beta
+map_estimates = {}
+
+for alpha in alpha_values:
+    beta = alpha - 1.0  # Equivalent smoothing factor
+    theta_map = (word_counts + beta) / (N + V * beta)
+    map_estimates[f"MAP (alpha={alpha})"] = theta_map
+
+df_results = pd.DataFrame({'Word': vocab, 'Count': word_counts, 'MLE': theta_mle})
+for key, map_probs in map_estimates.items():
+    df_results[key] = map_probs
+
+print("--- Top 10 Most Frequent Words ---")
+print(df_results.sort_values(by='Count', ascending=False).head(10).to_string(index=False))
+
+print("\n--- Bottom 5 Least Frequent / Zero Count Words ---")
+print(df_results.sort_values(by='Count', ascending=True).head(5).to_string(index=False))
+
+top_df = df_results.sort_values(by='Count', ascending=False).head(15)
+
+plt.figure(figsize=(12, 6))
+x_indices = np.arange(len(top_df))
+width = 0.15
+
+plt.bar(x_indices - width*2, top_df['MLE'], width=width, label='MLE', color='black')
+for i, (key, map_probs) in enumerate(map_estimates.items()):
+    plt.bar(x_indices - width + i*width, top_df[key], width=width, label=key)
+
+plt.xticks(x_indices, top_df['Word'], rotation=45, ha='right')
+plt.ylabel('Estimated Probability $P(w_i)$')
+plt.title('Comparison of MLE vs. MAP Estimates with Varying Dirichlet Priors')
+plt.legend()
+plt.tight_layout()
+plt.show()
