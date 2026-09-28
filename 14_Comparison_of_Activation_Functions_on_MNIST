@@ -1,0 +1,51 @@
+import time, matplotlib.pyplot as plt
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import accuracy_score, log_loss
+
+print("Loading Digits dataset...")
+X, y = load_digits(return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(X / 16.0, y, test_size=0.2, random_state=42, stratify=y)
+print("Training samples:", X_train.shape[0])
+print("Testing samples:", X_test.shape[0])
+
+res, curves, names = {}, {}, ["sigmoid", "relu", "tanh"]
+for name, act in [("sigmoid", "logistic"), ("relu", "relu"), ("tanh", "tanh")]:
+    print(f"\n====================================\nActivation Function: {name}\n====================================")
+    t0 = time.time()
+    mlp = MLPClassifier(hidden_layer_sizes=(128, 64), activation=act, solver='adam', max_iter=50, random_state=42).fit(X_train, y_train)
+    tt = time.time() - t0
+    acc, loss = accuracy_score(y_test, mlp.predict(X_test)) * 100, log_loss(y_test, mlp.predict_proba(X_test))
+    res[name] = {"accuracy": acc, "loss": loss, "time": tt}
+    curves[name] = mlp.loss_curve_
+    print(f"\nTest Accuracy: {acc:.2f} %\nTest Loss: {loss:.4f}\nTraining Time: {tt:.2f} sComparison of Activation Functions on MNIST
+print(f"{'Activation':<12}{'Accuracy':<15}{'Loss':<12}{'Time (sec)':<15}\n--------------------------------------------")
+for n in names:
+    print(f"{n:<12}{res[n]['accuracy']:<15.2f}{res[n]['loss']:<12.4f}{res[n]['time']:<15.2f}")
+
+best_act = max(names, key=lambda n: res[n]['accuracy'])
+print(f"\n★ Best Activation Function: {best_act.upper()} with {res[best_act]['accuracy']:.2f}% Accuracy")
+
+plt.figure(figsize=(10, 6))
+for n in names: plt.plot(curves[n], label=n, linewidth=2)
+plt.title("Training Loss Comparison"); plt.xlabel("Iteration / Epoch"); plt.ylabel("Loss"); plt.legend(); plt.grid(True, linestyle='--', alpha=0.7); plt.tight_layout(); plt.show()
+
+def bar_plot(key, ylabel, title, ylim, fmt, offset):
+    vals = [res[n][key] for n in names]
+    plt.figure(figsize=(8, 5))
+    bars = plt.bar(names, vals, color=['orange', 'skyblue', 'lightgreen'], edgecolor='black')
+    plt.xlabel("Activation Function"); plt.ylabel(ylabel); plt.title(title)
+    if ylim: plt.ylim(ylim)
+    for b, v in zip(bars, vals): plt.text(b.get_x() + b.get_width() / 2, v + offset, f"{v:.2f}{fmt}", ha="center", fontweight='bold')
+    plt.tight_layout(); plt.show()
+
+bar_plot("accuracy", "Accuracy (%)", "Final Classification Accuracy", (0, 105), "%", 1.5)
+bar_plot("time", "Training Time (seconds)", "Training Time Comparison", None, "s", 0.05)
+
+print("\n\n============================================")
+print("                CONCLUSION")
+print("============================================")
+print("The neural networks using Sigmoid, ReLU, and Tanh activation functions were successfully implemented and trained using Scikit-Learn.")
+print("Their training time, convergence behavior, and classification accuracy were compared.")
+print(f"Based on the results, {best_act.upper()} achieved the highest accuracy and was identified as the best activation function for this dataset.")
