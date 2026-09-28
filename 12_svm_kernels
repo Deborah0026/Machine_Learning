@@ -1,0 +1,127 @@
+# Experiment 12
+# Comparison of SVM Kernels on Fashion MNIST
+
+import time
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.datasets import fetch_openml
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+print("Loading Fashion MNIST...")
+
+data = fetch_openml(
+    "Fashion-MNIST",
+    version=1,
+    as_frame=False
+)
+
+X = data.data
+y = data.target.astype(int)
+
+print("Dataset loaded!")
+print("Total images:", len(X))
+
+X_train = X[:10000]
+y_train = y[:10000]
+
+X_test = X[60000:62000]
+y_test = y[60000:62000]
+
+print("Training samples:", len(X_train))
+print("Testing samples :", len(X_test))
+
+X_train = X_train / 255.0
+X_test = X_test / 255.0
+
+models = {
+    "Linear": SVC(kernel="linear", C=1),
+    "Polynomial": SVC(kernel="poly", degree=3, C=1),
+    "RBF": SVC(kernel="rbf", C=1)
+}
+
+results = []
+
+for name, model in models.items():
+
+    print("\nTraining", name, "SVM...")
+
+    start = time.time()
+
+    model.fit(X_train, y_train)
+
+    training_time = time.time() - start
+
+    y_pred = model.predict(X_test)
+
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(
+        y_test, y_pred, average="macro"
+    )
+    recall = recall_score(
+        y_test, y_pred, average="macro"
+    )
+    f1 = f1_score(
+        y_test, y_pred, average="macro"
+    )
+
+    results.append([
+        name,
+        accuracy,
+        precision,
+        recall,
+        f1,
+        training_time
+    ])
+
+results = pd.DataFrame(
+    results,
+    columns=[
+        "Kernel",
+        "Accuracy",
+        "Precision",
+        "Recall",
+        "F1 Score",
+        "Training Time"
+    ]
+)
+
+print("\n")
+print(results)
+
+best = results.loc[results["Accuracy"].idxmax()]
+
+print("\nBest Kernel:", best["Kernel"])
+print("Best Accuracy:", best["Accuracy"])
+
+
+plt.figure(figsize=(7, 5))
+
+plt.bar(
+    results["Kernel"],
+    results["Accuracy"],
+    color=["blue", "orange", "green"]
+)
+
+plt.title("SVM Kernel Accuracy")
+plt.xlabel("Kernel")
+plt.ylabel("Accuracy")
+
+plt.ylim(0, 1)
+
+plt.show()
+
+plt.figure(figsize=(7, 5))
+
+plt.bar(
+    results["Kernel"],
+    results["Training Time"],
+    color=["blue", "orange", "green"]
+)
+
+plt.title("SVM Training Time")
+plt.xlabel("Kernel")
+plt.ylabel("Time (seconds)")
+
+plt.show()
